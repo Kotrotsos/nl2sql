@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nl2sql"
+name = "nl2sql-agent"
 version = "0.1.0"
-description = "Natural-language-to-SQL agent loop with schema and execution tools, hints, feedback store, and eval harness."
+description = "Natural-language-to-SQL agent loop with schema and execution tools, hints, feedback store, and eval harness. Imports as `nl2sql`."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

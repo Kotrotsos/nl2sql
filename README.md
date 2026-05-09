@@ -7,12 +7,14 @@ Distilled from the Microsoft ISE article *SQL query generation from natural lang
 ## Install
 
 ```bash
-pip install nl2sql                    # core
-pip install "nl2sql[anthropic]"       # + Anthropic
-pip install "nl2sql[openai]"          # + OpenAI
-pip install "nl2sql[postgres]"        # + Postgres driver
-pip install "nl2sql[all]"             # everything
+pip install nl2sql-agent                    # core, imports as `nl2sql`
+pip install "nl2sql-agent[anthropic]"       # + Anthropic
+pip install "nl2sql-agent[openai]"          # + OpenAI
+pip install "nl2sql-agent[postgres]"        # + Postgres driver
+pip install "nl2sql-agent[all]"             # everything
 ```
+
+> The PyPI distribution name is `nl2sql-agent` because the unqualified `nl2sql` namespace was already taken by an unrelated stub. The Python import path is unchanged: `from nl2sql import Nl2Sql`.
 
 ## Quickstart
 
