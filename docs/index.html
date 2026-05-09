@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nl2sql - natural language to SQL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Natural-language to SQL with an agent loop, schema introspection, executed validation, domain hints, and a feedback store.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #0f172a;
+    --muted: #475569;
+    --accent: #1d4ed8;
+    --accent-bg: #eff6ff;
+    --border: #e2e8f0;
+    --code-bg: #f8fafc;
+    --code-border: #e2e8f0;
+  }
+  [data-theme="dark"] {
+    --bg: #0b1020;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #93c5fd;
+    --accent-bg: #1e293b;
+    --border: #1e293b;
+    --code-bg: #0f172a;
+    --code-border: #1e293b;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    line-height: 1.65;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+  nav.sidebar {
+    border-right: 1px solid var(--border);
+    padding: 24px 20px 32px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  nav.sidebar h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 16px 0 8px;
+  }
+  nav.sidebar a {
+    display: block;
+    color: var(--fg);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  nav.sidebar a:hover { background: var(--accent-bg); color: var(--accent); }
+  main {
+    padding: 32px 56px 96px;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  h1 { margin: 0 0 4px; font-size: 2rem; font-weight: 700; }
+  .tag { color: var(--muted); font-size: 1rem; }
+  h2 {
+    margin-top: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+  h3 { margin-top: 24px; font-size: 1.1rem; }
+  p, ul, ol { margin: 8px 0 14px; }
+  code {
+    font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    font-size: 0.88rem;
+  }
+  pre code { background: transparent; border: none; padding: 0; }
+  .controls { display: flex; gap: 8px; align-items: center; }
+  button {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  blockquote {
+    margin: 14px 0;
+    padding: 10px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    border-radius: 0 6px 6px 0;
+  }
+  a { color: var(--accent); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.78rem; font-weight: 600; background: var(--accent-bg); color: var(--accent); }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.sidebar { display: none; }
+    main { padding: 24px 20px 64px; }
+  }
+
+  @media print {
+    body { background: white !important; color: black !important; }
+    .layout { display: block; }
+    nav.sidebar, .controls { display: none; }
+    main { padding: 0; max-width: none; }
+    h2 { page-break-after: avoid; }
+    pre { font-size: 0.7rem; page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+    a { color: black !important; text-decoration: none; }
+    a[href]:after { content: " (" attr(href) ")"; font-size: 0.7em; color: #555; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar">
+  <strong>nl2sql</strong>
+  <div class="tag">v0.1.0</div>
+  <h2>Guide</h2>
+  <a href="#overview">Overview</a>
+  <a href="#install">Install</a>
+  <a href="#quickstart">Quickstart</a>
+  <a href="#cli">CLI</a>
+  <a href="#config">Configuration</a>
+  <h2>Reference</h2>
+  <a href="#api-core">Nl2Sql</a>
+  <a href="#api-db">Database</a>
+  <a href="#api-llm">LLMClient</a>
+  <a href="#api-hints">Hints</a>
+  <a href="#api-feedback">Feedback</a>
+  <a href="#api-eval">Eval</a>
+  <a href="#api-safety">Safety</a>
+  <h2>Other</h2>
+  <a href="#testing">Testing</a>
+  <a href="#limits">Limits</a>
+  <a href="#license">License</a>
+</nav>
+
+<main>
+<header class="top">
+  <div>
+    <h1>nl2sql</h1>
+    <div class="tag">Natural language to SQL via a single agent loop.</div>
+  </div>
+  <div class="controls">
+    <button id="theme-toggle" type="button">Toggle theme</button>
+    <button onclick="window.print()" type="button">Print</button>
+  </div>
+</header>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <p>
+    <code>nl2sql</code> turns natural-language questions into validated SQL queries against a real database. It runs an agent loop with the four core tools the Microsoft ISE article identifies as load-bearing: <em>list tables</em>, <em>full schema</em>, <em>per-table schema</em>, and <em>execute SQL</em>. On top of that it adds two of the article's highest-leverage capabilities: a <strong>domain hints</strong> system (+10 to 14 points accuracy) and a <strong>feedback store</strong> for corrected SQL (+19 points).
+  </p>
+  <ul>
+    <li><span class="pill">Safety-first</span> SELECT-only by default, single statement, system-table denylist.</li>
+    <li><span class="pill">Pluggable</span> LLM and DB behind clean ABCs - Anthropic, OpenAI, Postgres, SQLite ship in v1.</li>
+    <li><span class="pill">CLI &amp; library</span> Equal first-class status; the CLI is built on Typer + Rich.</li>
+    <li><span class="pill">Eval</span> harness with HTML report, numeric tolerance, bipartite row matching.</li>
+  </ul>
+</section>
+
+<section id="install">
+  <h2>Install</h2>
+<pre><code>pip install nl2sql                  # core
+pip install "nl2sql[anthropic]"     # + Anthropic
+pip install "nl2sql[openai]"        # + OpenAI
+pip install "nl2sql[postgres]"      # + Postgres driver
+pip install "nl2sql[all]"           # everything</code></pre>
+</section>
+
+<section id="quickstart">
+  <h2>Quickstart</h2>
+<pre><code>from nl2sql import Nl2Sql
+from nl2sql.db import SqliteDatabase
+from nl2sql.llm import AnthropicClient
+
+n2s = Nl2Sql(
+    db=SqliteDatabase("./customers.db"),
+    llm=AnthropicClient(model="claude-opus-4-7"),
+)
+
+result = n2s.ask("How many customers signed up last quarter?")
+print(result.sql)
+print(result.rows)</code></pre>
+
+  <h3>With hints and feedback</h3>
+<pre><code>from nl2sql import Nl2Sql, DomainHints, JsonFeedbackStore
+from nl2sql.db import PostgresDatabase
+from nl2sql.llm import OpenAIClient
+
+n2s = Nl2Sql(
+    db=PostgresDatabase(dsn="postgresql://reader@host/analytics"),
+    llm=OpenAIClient(model="gpt-5"),
+    hints=DomainHints.from_yaml("hints.yaml"),
+    feedback=JsonFeedbackStore("./feedback.json"),
+    max_iterations=12,
+)
+
+result = n2s.ask("Top 10 customers by 2026 spend, excluding internal accounts")
+n2s.feedback.record(
+    question=result.question,
+    sql=result.sql,
+    correct=True,
+    notes="internal accounts are flagged by accounts.is_internal",
+)</code></pre>
+</section>
+
+<section id="cli">
+  <h2>CLI</h2>
+  <p>The CLI is built on Typer and Rich. Every command supports <code>--json</code>, <code>--profile</code>, <code>--db</code>, <code>--model</code>, <code>--quiet</code>, <code>--no-color</code>.</p>
+
+<pre><code>nl2sql init                              # scaffold .nl2sql.yaml + hints.yaml
+nl2sql ask "How many orders this month?"
+nl2sql repl                              # interactive REPL
+nl2sql inspect tables
+nl2sql inspect schema --table households
+nl2sql inspect sample customers -n 5
+nl2sql eval run ./datasets/livesqlbench-medium --output ./reports/run-001
+nl2sql eval show ./reports/run-001 --failures-only
+nl2sql feedback list
+nl2sql feedback review
+nl2sql feedback forget &lt;id&gt;
+nl2sql hints validate ./hints.yaml
+nl2sql hints show
+nl2sql version</code></pre>
+
+  <h3>ask flags</h3>
+  <table>
+    <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>--max-iterations N</code></td><td>Override the configured iteration cap.</td></tr>
+      <tr><td><code>--no-trace</code></td><td>Hide the step-by-step trace, show only SQL and result.</td></tr>
+      <tr><td><code>--show-prompt</code></td><td>Print the assembled system prompt and exit.</td></tr>
+      <tr><td><code>--save-trace &lt;path&gt;</code></td><td>Write the JSONL step trace to a file.</td></tr>
+      <tr><td><code>--save-feedback</code></td><td>Prompt for correct/incorrect/notes after the result.</td></tr>
+      <tr><td><code>--limit N</code></td><td>Cap result rows shown (default 50).</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="config">
+  <h2>Configuration</h2>
+  <p>Resolved in this order, later overriding earlier:</p>
+  <ol>
+    <li><code>~/.config/nl2sql/config.yaml</code> - user defaults</li>
+    <li><code>./.nl2sql.yaml</code> - project config (or any ancestor)</li>
+    <li><code>--profile &lt;name&gt;</code> selects a named profile</li>
+    <li>Env vars: <code>NL2SQL_DB_URL</code>, <code>NL2SQL_LLM_MODEL</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code></li>
+    <li>CLI flags</li>
+  </ol>
+<pre><code>default_profile: dev
+
+profiles:
+  dev:
+    db: sqlite:///./customers.db
+    llm:
+      provider: anthropic
+      model: claude-opus-4-7
+    hints: ./hints.yaml
+    feedback: ./feedback.json
+    max_iterations: 10
+
+  prod:
+    db: postgresql://reader@db.internal/analytics
+    llm:
+      provider: openai
+      model: gpt-5
+    hints: ./hints.prod.yaml
+    feedback: ./prod.feedback.json
+    require_select_only: true</code></pre>
+</section>
+
+<section id="api-core">
+  <h2>Nl2Sql</h2>
+<pre><code>Nl2Sql(
+    db: Database,
+    llm: LLMClient,
+    *,
+    hints: DomainHints | None = None,
+    knowledge_store: KnowledgeStore | None = None,
+    feedback: FeedbackStore | None = None,
+    max_iterations: int = 10,
+    max_rows_returned: int = 200,
+    query_timeout_s: float = 10.0,
+    require_select_only: bool = True,
+    deny_system_tables: bool = True,
+)</code></pre>
+  <p>Calling <code>.ask(question)</code> runs the agent loop and returns a <code>Result</code> with the SQL the agent ran, the rows it returned, the full step-by-step trace, token usage, and a <code>stopped_reason</code> tag.</p>
+</section>
+
+<section id="api-db">
+  <h2>Database</h2>
+  <p><code>nl2sql.db</code> ships <code>SqliteDatabase</code> and <code>PostgresDatabase</code>. Roll your own by subclassing <code>Database</code> and implementing <code>list_tables</code>, <code>get_schema</code>, <code>get_table_schema</code>, and <code>execute_select</code>.</p>
+</section>
+
+<section id="api-llm">
+  <h2>LLMClient</h2>
+  <p>Built-ins: <code>AnthropicClient</code>, <code>OpenAIClient</code>, <code>MockLLMClient</code> (for tests; replays scripted tool calls deterministically). Implement the <code>chat</code> method to plug in any other provider.</p>
+</section>
+
+<section id="api-hints">
+  <h2>Domain hints</h2>
+  <p>Static hints inject directly into the system prompt under <code>## Glossary</code>, <code>## Formulas</code>, <code>## Join rules</code>, <code>## Column descriptions</code>. Empty fields render no headings - clean prompt by default.</p>
+<pre><code>DomainHints(
+    glossary={"locregion": "Region code, uppercase, no diacritics"},
+    formulas={"warranty_claim_rate": "returns_with_warranty / total_returns * 100"},
+    join_rules=["households.housenum links to properties.houselink"],
+    column_descriptions={"households.locregion": "Region code"},
+)</code></pre>
+  <p><code>KnowledgeStore</code> exposes a <code>lookup_hint(topic)</code> tool to the agent. Implement <code>lookup(topic) -&gt; str | None</code> to plug in vector search or any other store. <code>DictKnowledgeStore</code> ships out of the box.</p>
+</section>
+
+<section id="api-feedback">
+  <h2>Feedback store</h2>
+  <p><code>JsonFeedbackStore</code> is file-backed, with token-Jaccard similarity for retrieval. Records are read on every agent run; the top-<em>k</em> matches are appended to the system prompt under <code>## Past validated examples</code>.</p>
+<pre><code>store = JsonFeedbackStore("./feedback.json")
+store.record(question, sql, correct=True, notes="customer tier is accounts.tier")
+store.find_similar("Top customers by spend", k=3)
+store.forget(entry_id)</code></pre>
+</section>
+
+<section id="api-eval">
+  <h2>Eval harness</h2>
+<pre><code>from nl2sql.eval import run_eval, FlexibleMatcher, LiveSQLBenchDataset
+
+ds = LiveSQLBenchDataset.from_path("./bench/cases.jsonl")
+report = run_eval(
+    dataset=ds,
+    system=n2s,
+    matcher=FlexibleMatcher(numeric_tolerance=0.01, row_matching="bipartite"),
+    parallel=4,
+)
+report.write_html("./reports/run-001/report.html")
+report.write_json("./reports/run-001/report.json")
+print(report.accuracy)</code></pre>
+  <p>Each case can specify <code>expected_rows</code> (preferred, scored with <code>FlexibleMatcher</code>) or <code>expected_sql</code> (whitespace-normalised exact match fallback).</p>
+</section>
+
+<section id="api-safety">
+  <h2>Safety</h2>
+  <p>Three hard rails live in <code>nl2sql.safety</code>:</p>
+  <ol>
+    <li>Single-statement check (parsed via <code>sqlglot</code>, not split on semicolons).</li>
+    <li><code>SELECT</code>-only allowlist; CTEs and unions are allowed; INSERT/UPDATE/DELETE/DDL are not.</li>
+    <li>System-table denylist: <code>pg_*</code>, <code>information_schema</code>, <code>sqlite_master</code>, <code>sqlite_sequence</code>. Disable with <code>deny_system_tables=False</code>.</li>
+  </ol>
+<pre><code>from nl2sql.safety import is_safe_select, enforce_safe_select
+
+is_safe_select("SELECT 1").ok       # True
+is_safe_select("DROP TABLE t").ok   # False
+enforce_safe_select("SELECT 1")     # returns normalised SQL
+enforce_safe_select("DELETE FROM t") # raises SafetyError</code></pre>
+</section>
+
+<section id="testing">
+  <h2>Testing</h2>
+<pre><code>pip install -e ".[dev,all]"
+pytest -q
+pytest --html=reports/test-report.html --self-contained-html
+pytest --cov=nl2sql --cov-report=html:reports/coverage</code></pre>
+  <p>The repo's <code>reports/</code> includes a self-contained pytest HTML report and an HTML coverage tree.</p>
+</section>
+
+<section id="limits">
+  <h2>Known limits</h2>
+  <ul>
+    <li>Business-logic errors require domain knowledge that no amount of prompt tuning fixes; surface them via hints + feedback.</li>
+    <li>Schema dumps are flat strings injected into the prompt; databases with thousands of tables will blow context. v2 will add vector-indexed retrieval.</li>
+    <li>No streaming of intermediate steps in v1. Callers receive the final <code>Result</code>.</li>
+    <li>Single-database scope per <code>Nl2Sql</code> instance.</li>
+  </ul>
+</section>
+
+<section id="license">
+  <h2>License</h2>
+  <p>MIT.</p>
+</section>
+
+</main>
+</div>
+
+<script>
+(function() {
+  var key = "nl2sql-docs-theme";
+  var saved = localStorage.getItem(key);
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  document.getElementById("theme-toggle").addEventListener("click", function() {
+    var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", cur);
+    localStorage.setItem(key, cur);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+{
+  "started_at": "2026-05-09T21:14:03.077204+00:00",
+  "finished_at": "2026-05-09T21:14:03.144733+00:00",
+  "total": 3,
+  "passed": 2,
+  "failed": 1,
+  "accuracy": 0.6666666666666666,
+  "cases": [
+    {
+      "case_id": "1",
+      "question": "How many customers?",
+      "predicted_sql": "SELECT COUNT(*) AS n FROM customers",
+      "predicted_rows": [
+        {
+          "n": 5
+        }
+      ],
+      "expected_rows": [
+        {
+          "n": 5
+        }
+      ],
+      "passed": true,
+      "failure_category": null,
+      "diff": null,
+      "elapsed_s": 0.06667804095195606,
+      "iterations": 2
+    },
+    {
+      "case_id": "2",
+      "question": "How many customers (variant)?",
+      "predicted_sql": "SELECT COUNT(*) AS n FROM products",
+      "predicted_rows": [
+        {
+          "n": 3
+        }
+      ],
+      "expected_rows": [
+        {
+          "n": 5
+        }
+      ],
+      "passed": false,
+      "failure_category": "business_logic",
+      "diff": "expected row 0 {'n': 5} has no predicted match",
+      "elapsed_s": 0.00030087499180808663,
+      "iterations": 2
+    },
+    {
+      "case_id": "3",
+      "question": "How many distinct countries?",
+      "predicted_sql": "SELECT COUNT(DISTINCT country) AS n FROM customers",
+      "predicted_rows": [
+        {
+          "n": 4
+        }
+      ],
+      "expected_rows": [
+        {
+          "n": 4
+        }
+      ],
+      "passed": true,
+      "failure_category": null,
+      "diff": null,
+      "elapsed_s": 0.0003512499970383942,
+      "iterations": 2
+    }
+  ]
+}

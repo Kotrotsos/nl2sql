@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nl2sql eval report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #0f172a; --muted: #475569;
+    --accent: #1d4ed8; --pass: #166534; --pass-bg: #dcfce7;
+    --fail: #991b1b; --fail-bg: #fee2e2;
+    --border: #e2e8f0; --code-bg: #f8fafc;
+  }
+  [data-theme="dark"] {
+    --bg: #0b1020; --fg: #e2e8f0; --muted: #94a3b8;
+    --accent: #93c5fd; --pass: #86efac; --pass-bg: #052e16;
+    --fail: #fca5a5; --fail-bg: #450a0a;
+    --border: #1e293b; --code-bg: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+    margin: 0; padding: 0; line-height: 1.55;
+  }
+  header {
+    padding: 32px 40px 16px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    flex-wrap: wrap;
+  }
+  h1 { margin: 0; font-size: 1.6rem; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  main { padding: 24px 40px 64px; max-width: 1280px; margin: 0 auto; }
+  .summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 32px;
+  }
+  .card {
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px;
+    background: var(--bg);
+  }
+  .card .label { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .card .value { font-size: 1.8rem; font-weight: 600; margin-top: 4px; }
+  .card.accuracy .value { color: var(--accent); }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.95rem;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--code-bg); font-weight: 600; }
+  tr.detail-row td { background: var(--code-bg); padding: 0 16px 16px; }
+  details summary { cursor: pointer; padding: 8px 0; color: var(--accent); }
+  pre { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--border); }
+  code { font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }
+  .pill.pass { background: var(--pass-bg); color: var(--pass); }
+  .pill.fail { background: var(--fail-bg); color: var(--fail); }
+  .controls { display: flex; gap: 8px; align-items: center; }
+  button { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.9rem; }
+  button:hover { border-color: var(--accent); }
+  ul.fails { margin: 8px 0; padding-left: 20px; }
+  @media print {
+    body { background: white; color: black; }
+    button { display: none; }
+    tr.detail-row td { background: #f7f7f7; }
+    pre { font-size: 0.7rem; page-break-inside: avoid; }
+    tr { page-break-inside: avoid; }
+    header { padding: 0 0 12px; }
+    main { padding: 12px 0; }
+  }
+</style>
+</head>
+<body>
+<header><div><h1>nl2sql evaluation report</h1><div class="meta">Started 2026-05-09T21:14:03.077204+00:00 | Finished 2026-05-09T21:14:03.144733+00:00</div></div><div class="controls"><button id="theme-toggle" type="button">Toggle theme</button><button onclick="window.print()" type="button">Print</button></div></header>
+<main>
+<section class="summary"><div class="card accuracy"><div class="label">Accuracy</div><div class="value">66.7%</div></div><div class="card"><div class="label">Passed</div><div class="value">2</div></div><div class="card"><div class="label">Failed</div><div class="value">1</div></div><div class="card"><div class="label">Total</div><div class="value">3</div></div></section>
+<h2>Failure breakdown</h2><ul class="fails"><li><strong>business_logic</strong>: 1</li></ul><h2>Cases</h2>
+<table><thead><tr><th>id</th><th>status</th><th>category</th><th>question</th><th>iter</th><th>time</th></tr></thead><tbody><tr class="case pass"><td class="id">1</td><td class="status"><span class="pill pass">pass</span></td><td class="cat"></td><td class="q">How many customers?</td><td class="iter">2</td><td class="elapsed">0.07s</td></tr><tr class="detail-row pass"><td colspan="6"><details><summary>Trace</summary><h4>Predicted SQL</h4><pre><code>SELECT COUNT(*) AS n FROM customers</code></pre><h4>Predicted rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 5
+  }
+]</code></pre><h4>Expected rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 5
+  }
+]</code></pre></details></td></tr><tr class="case fail"><td class="id">2</td><td class="status"><span class="pill fail">fail</span></td><td class="cat">business_logic</td><td class="q">How many customers (variant)?</td><td class="iter">2</td><td class="elapsed">0.00s</td></tr><tr class="detail-row fail"><td colspan="6"><details><summary>Trace</summary><h4>Predicted SQL</h4><pre><code>SELECT COUNT(*) AS n FROM products</code></pre><h4>Diff</h4><pre>expected row 0 {&#x27;n&#x27;: 5} has no predicted match</pre><h4>Predicted rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 3
+  }
+]</code></pre><h4>Expected rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 5
+  }
+]</code></pre></details></td></tr><tr class="case pass"><td class="id">3</td><td class="status"><span class="pill pass">pass</span></td><td class="cat"></td><td class="q">How many distinct countries?</td><td class="iter">2</td><td class="elapsed">0.00s</td></tr><tr class="detail-row pass"><td colspan="6"><details><summary>Trace</summary><h4>Predicted SQL</h4><pre><code>SELECT COUNT(DISTINCT country) AS n FROM customers</code></pre><h4>Predicted rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 4
+  }
+]</code></pre><h4>Expected rows</h4><pre><code>[
+  {
+    &quot;n&quot;: 4
+  }
+]</code></pre></details></td></tr></tbody></table>
+</main>
+<script>
+(function() {
+  var key = "nl2sql-report-theme";
+  var saved = localStorage.getItem(key);
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  document.getElementById("theme-toggle").addEventListener("click", function() {
+    var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", cur);
+    localStorage.setItem(key, cur);
+  });
+})();
+</script>
+</body></html>
